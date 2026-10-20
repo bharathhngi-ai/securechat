@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <title>SecureChat</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js" defer></script>
+    <script src="/chat.js" defer></script>
+</head>
+<body>
+<main id="login-screen" class="login-screen">
+    <section class="login-layout" aria-labelledby="login-title">
+        <div class="login-story">
+            <a class="login-brand" href="/" aria-label="SecureChat home">
+                <span class="login-brand-mark" aria-hidden="true">s</span>
+                <span>securechat</span>
+            </a>
+            <div class="story-copy">
+                <span class="story-kicker"><span class="online-dot"></span> A quieter kind of connection</span>
+                <h1>Good conversations<br>feel like <em>your own.</em></h1>
+                <p>Your messages are locked on your device before they travel. Not even SecureChat can read them.</p>
+            </div>
+            <div class="message-art" aria-hidden="true">
+                <div class="art-spark spark-one">✳</div>
+                <div class="art-spark spark-two">✳</div>
+                <div class="art-bubble bubble-back"><span></span><span></span><span></span></div>
+                <div class="art-bubble bubble-front">
+                    <span class="art-avatar">J</span>
+                    <span class="art-lines"><i></i><i></i></span>
+                    <span class="art-lock">✓</span>
+                </div>
+                <div class="art-caption">only you two can read this</div>
+            </div>
+            <div class="story-footer"><span>Private by design</span><span>·</span><span>Simple by nature</span></div>
+        </div>
+
+        <div class="login-panel">
+            <div class="login-panel-top"><span>WELCOME IN</span><span class="login-mini-mark" aria-hidden="true">sc</span></div>
+            <div class="login-form-wrap">
+                <div class="welcome-icon" aria-hidden="true">✉</div>
+                <h2 id="login-title">Make yourself<br>at home.</h2>
+                <p class="login-intro">Choose a name for your chats. It stays in this browser, not on our server.</p>
+                <form id="sign-in-form">
+                    <label for="sign-in-name">What should we call you?</label>
+                    <div class="name-input-wrap"><span aria-hidden="true">☺</span><input id="sign-in-name" name="displayName" type="text" maxlength="40" placeholder="Your name" autocomplete="nickname" required></div>
+                    <button id="sign-in-button" class="button login-button" type="submit">
+                        <span>Continue securely</span><span aria-hidden="true">→</span>
+                    </button>
+                    <p id="login-error" class="login-error" role="alert"></p>
+                </form>
+                <div class="login-divider"><span></span><i>no password needed</i><span></span></div>
+                <div class="local-note"><span class="local-note-icon" aria-hidden="true">⌂</span><p><strong>This device is your account.</strong><br>Your encryption keys are created here and never uploaded.</p></div>
+            </div>
+            <p class="login-legal">By continuing, a private device ID is created for routing your messages.</p>
+        </div>
+    </section>
+</main>
+
+<main id="app-page" class="page" hidden>
+    <header class="brand">
+        <a class="brand-mark" href="/" aria-label="SecureChat home">SC</a>
+        <div class="brand-copy">
+            <h1>SecureChat</h1>
+            <p>Private conversations, protected on your device.</p>
+        </div>
+        <p id="connection-status" class="connection-status" role="status">Not connected</p>
+    </header>
+
+    <div class="app-grid">
+        <aside class="sidebar">
+            <section class="card identity-card" aria-labelledby="identity-heading">
+                <div class="section-heading">
+                    <div>
+                        <span class="step-label">YOUR SPACE</span>
+                        <h2 id="identity-heading">Your profile</h2>
+                    </div>
+                    <span class="avatar self-avatar" aria-hidden="true">SC</span>
+                </div>
+                <p class="muted">Your name is only for your messages. Your private keys stay in this browser.</p>
+                <label for="display-name">Display name</label>
+                <input id="display-name" maxlength="40" autocomplete="nickname">
+                <label for="my-user-id">Your random ID</label>
+                <div class="copy-row">
+                    <input id="my-user-id" readonly placeholder="Shown after setup" autocomplete="off">
+                    <button id="copy-id" class="icon-button" type="button" disabled aria-label="Copy your ID">Copy</button>
+                </div>
+                <label for="my-fingerprint">Your key fingerprint</label>
+                <textarea id="my-fingerprint" rows="3" readonly placeholder="Shown after setup"></textarea>
+                <p class="small-note">Share your ID with a peer, and compare fingerprints in person or through another trusted channel.</p>
+            </section>
+
+            <section class="card peer-card" aria-labelledby="peer-heading">
+                <span class="step-label">START A CHAT</span>
+                <h2 id="peer-heading">Add a person</h2>
+                <p class="muted">Enter the random ID your peer shared with you.</p>
+                <label class="sr-only" for="peer-user-id">Peer random ID</label>
+                <input id="peer-user-id" placeholder="Peer random UUID" autocomplete="off" spellcheck="false">
+                <button id="load-peer" class="button secondary full-width" type="button">Find person</button>
+                <div id="peer-card" class="peer-summary" hidden>
+                    <span class="avatar peer-avatar" aria-hidden="true">?</span>
+                    <div class="peer-summary-copy">
+                        <strong id="peer-summary-name">SecureChat peer</strong>
+                        <span id="peer-summary-id"></span>
+                    </div>
+                </div>
+                <p id="peer-fingerprint" class="fingerprint" aria-live="polite">No person selected.</p>
+                <label class="trust-option">
+                    <input id="confirm-peer" type="checkbox" disabled>
+                    I compared this fingerprint with my peer using another trusted channel.
+                </label>
+            </section>
+        </aside>
+
+        <section class="card chat-card" aria-labelledby="chat-heading">
+            <header class="chat-header">
+                <span class="avatar peer-avatar" aria-hidden="true">?</span>
+                <div class="chat-header-copy">
+                    <h2 id="chat-heading">Your conversation</h2>
+                    <p id="chat-peer-label" class="muted">Choose a person to begin</p>
+                </div>
+                <span class="lock-label"><span aria-hidden="true">●</span> Encrypted on your device</span>
+            </header>
+
+            <div id="conversation-notice" class="conversation-notice">
+                <div class="notice-icon" aria-hidden="true">✉</div>
+                <h3>Your messages stay between you and your peer</h3>
+                <p>SecureChat encrypts each message before sending it. First, set up your device and verify your peer's key fingerprint.</p>
+            </div>
+            <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+            <form id="text-form" class="composer">
+                <label class="sr-only" for="message-text">Write a message</label>
+                <textarea id="message-text" rows="2" maxlength="4000"
+                          placeholder="Write a message…" required></textarea>
+                <div class="composer-actions">
+                    <label id="file-label" class="icon-button file-button disabled" for="file-input" title="Send a file">
+                        <span aria-hidden="true">＋</span> File
+                    </label>
+                    <input id="file-input" type="file" disabled>
+                    <button id="send-text" class="button primary send-button" type="submit" disabled>Send</button>
+                </div>
+            </form>
+            <p id="send-hint" class="send-hint" role="status" aria-live="polite"></p>
+            <p id="app-error" class="error" role="alert"></p>
+            <p class="privacy-note">The relay can see random IDs, IP addresses, timing and encrypted message sizes. SecureChat is not anonymous transport.</p>
+        </section>
+    </div>
+</main>
+</body>
+</html>
