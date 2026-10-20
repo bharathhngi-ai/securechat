@@ -74,22 +74,24 @@ mvn spring-boot:run
 
 Open `http://localhost:8080`. The welcome screen asks for a display name, then creates or loads the browser's encryption keys. This is a local sign-in convenience, not a password-based server account: the display name stays in local browser storage and is included only inside encrypted messages. Web Crypto is available on localhost for development; use HTTPS/WSS in deployments.
 
-## Public HTTPS deployment (Railway)
+## Public HTTPS deployment (Render)
 
-The repository includes a Docker build and Railway configuration. To publish it:
+The repository includes a Docker build and a Render Blueprint at `render.yaml`. Render does not offer a managed MySQL service, so first create or choose an external MySQL database with network access from Render. Keep its hostname, database name, username, and password private.
 
-1. Create a Railway project and deploy this GitHub repository (`bharathhngi-ai/securechat`) as a service.
-2. Add a Railway MySQL service to the same project.
-3. In the app service's variables, add these MySQL service references (replace `MySQL` if you renamed that service):
+1. In Render, create a **Blueprint** from `https://github.com/bharathhngi-ai/securechat`.
+2. Render reads `render.yaml` and creates the `securechat` Docker web service. Configure these environment variables for that service using your external MySQL provider's connection details:
 
    ```text
-   DB_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=true&serverTimezone=UTC
-   DB_USERNAME=${{MySQL.MYSQLUSER}}
-   DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+   DB_URL=jdbc:mysql://MYSQL_HOST:MYSQL_PORT/MYSQL_DATABASE?useSSL=true&serverTimezone=UTC
+   DB_USERNAME=MYSQL_USERNAME
+   DB_PASSWORD=MYSQL_PASSWORD
    ```
 
-4. Deploy the app, then use Railway's **Generate Domain** option to create its public HTTPS address. The app listens on Railway's injected `PORT`; Spring's SockJS endpoint uses the same HTTPS origin.
-5. Open the generated HTTPS address in two separate browser profiles to test two devices. Share UUIDs and compare fingerprints over another trusted channel before confirming a peer.
+   Replace the uppercase placeholders with the provider's values. Do not commit these credentials to GitHub.
+3. Wait for the first deploy to finish, then use Render's **Settings → Custom Domains** or the generated `onrender.com` URL. Render supplies HTTPS; the frontend connects its SockJS/WebSocket session through the same origin.
+4. Open the public HTTPS address in two separate browser profiles to test two devices. Share UUIDs and compare fingerprints over another trusted channel before confirming a peer.
+
+The Blueprint uses Render's free web-service plan, which can spin down when idle; first requests after inactivity may take time. Change the plan in Render if you need always-on service. Keep the service at one replica: the current STOMP simple broker and one-time challenge store are in-memory.
 
 Keep the service at one replica: the current STOMP simple broker and one-time challenge store are in-memory. This is a classroom deployment, not a production messenger; the host can serve modified JavaScript, and it can observe UUIDs, public keys, IP addresses, message direction, timing, and ciphertext sizes. Do not use it for sensitive communications. Review your hosting provider's current pricing and data-retention terms before deploying.
 
