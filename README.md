@@ -74,6 +74,25 @@ mvn spring-boot:run
 
 Open `http://localhost:8080`. The welcome screen asks for a display name, then creates or loads the browser's encryption keys. This is a local sign-in convenience, not a password-based server account: the display name stays in local browser storage and is included only inside encrypted messages. Web Crypto is available on localhost for development; use HTTPS/WSS in deployments.
 
+## Public HTTPS deployment (Railway)
+
+The repository includes a Docker build and Railway configuration. To publish it:
+
+1. Create a Railway project and deploy this GitHub repository (`bharathhngi-ai/securechat`) as a service.
+2. Add a Railway MySQL service to the same project.
+3. In the app service's variables, add these MySQL service references (replace `MySQL` if you renamed that service):
+
+   ```text
+   DB_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=true&serverTimezone=UTC
+   DB_USERNAME=${{MySQL.MYSQLUSER}}
+   DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+   ```
+
+4. Deploy the app, then use Railway's **Generate Domain** option to create its public HTTPS address. The app listens on Railway's injected `PORT`; Spring's SockJS endpoint uses the same HTTPS origin.
+5. Open the generated HTTPS address in two separate browser profiles to test two devices. Share UUIDs and compare fingerprints over another trusted channel before confirming a peer.
+
+Keep the service at one replica: the current STOMP simple broker and one-time challenge store are in-memory. This is a classroom deployment, not a production messenger; the host can serve modified JavaScript, and it can observe UUIDs, public keys, IP addresses, message direction, timing, and ciphertext sizes. Do not use it for sensitive communications. Review your hosting provider's current pricing and data-retention terms before deploying.
+
 ### Stored data
 
 `User` holds a random UUID plus two public keys (RSA-OAEP for encryption and RSA-PSS for signatures) and an enrollment timestamp. It stores no username, email, or private key. Re-registering a UUID with different keys is rejected.
